@@ -1,0 +1,195 @@
+1. Usando a sintaxe proprietária da Oracle, exiba o nome de cada cliente junto com o número
+de sua conta.
+
+SELECT c.CLIENTE_NOME, ct.CONTA_NUMERO
+FROM CLIENTE c, CONTA ct
+WHERE c.CLIENTE_COD = ct.CLIENTE_CLIENTE_COD;
+
+2. Mostre todas as combinações possíveis de clientes e agências (produto cartesiano).
+
+SELECT c.CLIENTE_NOME, a.AGENCIA_NOME
+FROM CLIENTE c, AGENCIA a;
+
+3. Usando aliases de tabela, exiba o nome dos clientes e a cidade da agência onde mantêm
+conta.
+
+SELECT c.CLIENTE_NOME, a.AGENCIA_CIDADE
+FROM CLIENTE c, CONTA ct, AGENCIA a
+WHERE c.CLIENTE_COD = ct.CLIENTE_CLIENTE_COD
+AND ct.AGENCIA_AGENCIA_COD = a.AGENCIA_COD;
+
+4. Exiba o saldo total de todas as contas cadastradas.
+
+SELECT SUM(SALDO) AS SALDO_TOTAL FROM CONTA;
+
+5. Mostre o maior saldo e a média de saldo entre todas as contas.
+
+SELECT MAX(SALDO) AS MAIOR_SALDO, AVG(SALDO) AS MEDIA_SALDO FROM CONTA;
+
+6. Apresente a quantidade total de contas cadastradas.
+
+SELECT COUNT(*) AS TOTAL_CONTAS FROM CONTA;
+
+7. Liste o número de cidades distintas onde os clientes residem.
+
+SELECT COUNT(DISTINCT CIDADE) AS CIDADES_DISTINTAS FROM CLIENTE;
+
+8. Exiba o número da conta e o saldo, substituindo valores nulos por zero.
+
+SELECT CONTA_NUMERO, NVL(SALDO, 0) AS SALDO_CORRIGIDO FROM CONTA;
+
+9. Exiba a média de saldo por cidade dos clientes.
+
+SELECT c.CIDADE, AVG(ct.SALDO) AS MEDIA_SALDO
+FROM CLIENTE c, CONTA ct
+WHERE c.CLIENTE_COD = ct.CLIENTE_CLIENTE_COD
+GROUP BY c.CIDADE;
+
+10. Liste apenas as cidades com mais de 3 contas associadas a seus moradores.
+
+SELECT c.CIDADE, COUNT(*) AS TOTAL_CONTAS
+FROM CLIENTE c, CONTA ct
+WHERE c.CLIENTE_COD = ct.CLIENTE_CLIENTE_COD
+GROUP BY c.CIDADE
+HAVING COUNT(*) > 3;
+
+11.Utilize a cláusula ROLLUP para exibir o total de saldos por cidade da agência e o total geral.
+
+SELECT a.AGENCIA_CIDADE, SUM(ct.SALDO) AS TOTAL_SALDO
+FROM CONTA ct, AGENCIA a
+WHERE ct.AGENCIA_AGENCIA_COD = a.AGENCIA_COD
+GROUP BY ROLLUP(a.AGENCIA_CIDADE);
+
+12. Faça uma consulta com UNION que combine os nomes de cidades dos clientes e das
+agências, sem repetições.
+
+SELECT DISTINCT CIDADE FROM CLIENTE
+UNION
+SELECT DISTINCT AGENCIA_CIDADE FROM AGENCIA;
+
+
+-----------------------------------------------------------------------------------
+
+
+Seção 10
+
+
+1. Liste os nomes dos clientes cujas contas possuem saldo acima da média geral de todas as
+contas registradas.
+
+SELECT c.CLIENTE_NOME
+FROM CLIENTE c, CONTA ct
+WHERE c.CLIENTE_COD = ct.CLIENTE_CLIENTE_COD
+AND ct.SALDO > (SELECT AVG(SALDO) FROM CONTA);
+
+2. Exiba os nomes dos clientes cujos saldos são iguais ao maior saldo encontrado no banco.
+
+SELECT c.CLIENTE_NOME
+FROM CLIENTE c, CONTA ct
+WHERE c.CLIENTE_COD = ct.CLIENTE_CLIENTE_COD
+AND ct.SALDO = (SELECT MAX(SALDO) FROM CONTA);
+
+3. Liste as cidades onde a quantidade de clientes é maior que a quantidade média de clientes
+por cidade.
+
+SELECT CIDADE
+FROM CLIENTE
+GROUP BY CIDADE
+HAVING COUNT(*) > (SELECT AVG(CNT) FROM (SELECT COUNT(*) AS CNT FROM CLIENTE GROUP BY CIDADE));
+
+4. Liste os nomes dos clientes com saldo igual a qualquer um dos dez maiores saldos registrados.
+
+SELECT DISTINCT c.CLIENTE_NOME
+FROM CLIENTE c, CONTA ct
+WHERE c.CLIENTE_COD = ct.CLIENTE_CLIENTE_COD
+AND ct.SALDO IN (
+    SELECT SALDO FROM (
+        SELECT SALDO FROM CONTA ORDER BY SALDO DESC
+    ) WHERE ROWNUM <= 10
+);
+
+5. Liste os clientes que possuem saldo menor que todos os saldos dos clientes da cidade de
+Niterói.
+
+SELECT c.CLIENTE_NOME
+FROM CLIENTE c, CONTA ct
+WHERE c.CLIENTE_COD = ct.CLIENTE_CLIENTE_COD
+AND ct.SALDO < ALL (
+    SELECT ct2.SALDO
+    FROM CLIENTE c2, CONTA ct2
+    WHERE c2.CLIENTE_COD = ct2.CLIENTE_CLIENTE_COD
+    AND c2.CIDADE = 'Niterói'
+);
+
+6. Liste os clientes cujos saldos estão entre os saldos de clientes de Volta Redonda.
+
+SELECT c.CLIENTE_NOME
+FROM CLIENTE c, CONTA ct
+WHERE c.CLIENTE_COD = ct.CLIENTE_CLIENTE_COD
+AND ct.SALDO BETWEEN
+    (SELECT MIN(ct2.SALDO)
+     FROM CLIENTE c2, CONTA ct2
+     WHERE c2.CLIENTE_COD = ct2.CLIENTE_CLIENTE_COD
+     AND c2.CIDADE = 'Volta Redonda')
+AND
+    (SELECT MAX(ct2.SALDO)
+     FROM CLIENTE c2, CONTA ct2
+     WHERE c2.CLIENTE_COD = ct2.CLIENTE_CLIENTE_COD
+     AND c2.CIDADE = 'Volta Redonda');
+
+7. Exiba os nomes dos clientes cujos saldos são maiores que a média de saldo das contas da
+mesma agência.
+
+SELECT c.CLIENTE_NOME
+FROM CLIENTE c, CONTA ct
+WHERE c.CLIENTE_COD = ct.CLIENTE_CLIENTE_COD
+AND ct.SALDO > (
+    SELECT AVG(ct2.SALDO)
+    FROM CONTA ct2
+    WHERE ct2.AGENCIA_AGENCIA_COD = ct.AGENCIA_AGENCIA_COD
+);
+
+8. Liste os nomes e cidades dos clientes que têm saldo inferior à média de sua própria cidade.
+
+SELECT c.CLIENTE_NOME, c.CIDADE
+FROM CLIENTE c, CONTA ct
+WHERE c.CLIENTE_COD = ct.CLIENTE_CLIENTE_COD
+AND ct.SALDO < (
+    SELECT AVG(ct2.SALDO)
+    FROM CLIENTE c2, CONTA ct2
+    WHERE c2.CLIENTE_COD = ct2.CLIENTE_CLIENTE_COD
+    AND c2.CIDADE = c.CIDADE
+);
+
+9. Liste os nomes dos clientes que possuem pelo menos uma conta registrada no banco.
+
+SELECT CLIENTE_NOME
+FROM CLIENTE c
+WHERE EXISTS (
+    SELECT 1 FROM CONTA ct
+    WHERE ct.CLIENTE_CLIENTE_COD = c.CLIENTE_COD
+);
+
+10. Liste os nomes dos clientes que ainda não possuem conta registrada no banco.
+
+SELECT CLIENTE_NOME
+FROM CLIENTE c
+WHERE NOT EXISTS (
+    SELECT 1 FROM CONTA ct
+    WHERE ct.CLIENTE_CLIENTE_COD = c.CLIENTE_COD
+);
+
+11.Usando a cláusula WITH, calcule a média de saldo por cidade e exiba os clientes que possuem
+saldo acima da média de sua cidade.
+
+WITH MEDIA_SALDO_CIDADE AS (
+    SELECT c.CIDADE, AVG(ct.SALDO) AS MEDIA
+    FROM CLIENTE c, CONTA ct
+    WHERE c.CLIENTE_COD = ct.CLIENTE_CLIENTE_COD
+    GROUP BY c.CIDADE
+)
+SELECT c.CLIENTE_NOME, c.CIDADE, ct.SALDO
+FROM CLIENTE c, CONTA ct, MEDIA_SALDO_CIDADE m
+WHERE c.CLIENTE_COD = ct.CLIENTE_CLIENTE_COD
+AND c.CIDADE = m.CIDADE
+AND ct.SALDO > m.MEDIA;
